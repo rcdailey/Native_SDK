@@ -68,18 +68,7 @@ struct SurfaceData
 	wl_pointer*			wlPointer;
 	wl_shell_surface*   wlShellSurface;
 
-	SurfaceData()
-	{
-		width = height = 0;
-		display = NULL;
-		surface = NULL;
-		wlRegistry = NULL;
-		wlCompositor = NULL;
-		wlShell = NULL;
-		wlSeat = NULL;
-		wlPointer = NULL;
-		wlShellSurface = NULL;
-	}
+	SurfaceData(){}
 };
 #endif
 
