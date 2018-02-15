@@ -274,8 +274,6 @@ for the SDK's projects to run.*
 XCode
 -----
 
-   <div id="xcodeoglespvrvframe">
-
 .. rubric:: XCode Project Setup for OpenGL ES Using PVRVFrame
    :name: xcode-project-setup-for-opengl-es-using-pvrvframe
 
@@ -350,7 +348,7 @@ Framework
 
 For a detailed explanation of how the Framework functions, please refer
 to the `PowerVR Framework Development
-Guide. <../Documents/RELEASE/PowerVR%20Framework.Development%20Guide.pdf>`__
+Guide. <./Documents/RELEASE/PowerVR%20Framework.Development%20Guide.pdf>`__
 
 Overview
 --------
@@ -379,7 +377,7 @@ PVRCore
 -------
 
 .. rubric:: **`View source code
-   documentation <../../Framework/PVRCore/Documentation/Index.html>`__**
+   documentation <./Framework/PVRCore/Documentation/Index.html>`__**
    :name: view-source-code-documentation
 
 This is the supporting code of the library to leverage for your own use.
@@ -391,7 +389,7 @@ PVRAssets
 ---------
 
 .. rubric:: **`View source code
-   documentation <../../Framework/PVRAssets/Documentation/Index.html>`__**
+   documentation <./Framework/PVRAssets/Documentation/Index.html>`__**
    :name: view-source-code-documentation-1
 
 This is the Framework’s asset code. It includes classes and helpers for
@@ -403,7 +401,7 @@ PVRShell
 --------
 
 .. rubric:: **`View source code
-   documentation <../../Framework/PVRShell/Documentation/Index.html>`__**
+   documentation <./Framework/PVRShell/Documentation/Index.html>`__**
    :name: view-source-code-documentation-2
 
 This is the native system abstraction (event loops, surfaces, windows,
@@ -415,7 +413,7 @@ PVRVk
 -----
 
 .. rubric:: **`View source code
-   documentation <../../Framework/PVRVk/Documentation/Index.html>`__**
+   documentation <./Framework/PVRVk/Documentation/Index.html>`__**
    :name: view-source-code-documentation-3
 
 This is a Vulkan C++ wrapper sporting reference-counted objects with
@@ -441,7 +439,7 @@ PVRCamera
 ---------
 
 .. rubric:: **`View source code
-   documentation <../../Framework/PVRCamera/Documentation/Index.html>`__**
+   documentation <./Framework/PVRCamera/Documentation/Index.html>`__**
    :name: view-source-code-documentation-5
 
 This is the code for interfacing with the camera of mobile platforms. A
