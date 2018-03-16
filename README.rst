@@ -5,22 +5,7 @@ Introduction
 .. figure:: ./Documentation/SDKBrowser/images/WelcomeGraphic.png
 
 The PowerVR SDK includes source code, example applications, tutorials
-and documentation. For further details regarding your SDK installation,
-please visit the `Getting Started <./GettingStarted.html>`__ page.
-
-The `Examples <./Examples.html>`__ page features a range of methods from
-initialising the API through to complex 3D graphics techniques. Many of
-these take advantage of our `Framework <./Framework.html>`__ which
-includes a range of modules available as source libraries.
-
-We've also supplied a range of documents which can be accessed from the
-`Documentation <./Documentation.html>`__ page. These documents include
-the relevant list of architecture guides, specifications, user manuals
-and whitepapers.
-
-Additional information is provided in this browser regarding the PowerVR
-Tools, which are suite of utilities for rapid graphics application
-development (see `PowerVR Tools <./PowerVRTools.html>`__ page).
+and documentation.
 
 Developers can join the PowerVR Insider programme and interact with our
 online Community at
