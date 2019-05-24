@@ -23,7 +23,7 @@ using std::string;
 namespace pvr {
 namespace system {
 
-StateMachine::StateMachine(OSApplication instance, system::CommandLineParser& commandLine, OSDATA osdata) : ShellOS(instance, osdata), m_currentState(StateNotInitialised),
+StateMachine::StateMachine(OSApplication instance, system::CommandLineParser& commandLine, OSDATA osdata) : ShellOS(instance, osdata), m_currentState(StateNotInitialized),
 	m_pause(false)
 {
 	m_shellData.os = this;
@@ -122,7 +122,43 @@ void StateMachine::applyCommandLine()
 			}
 			else if (strcasecmp(arg, "-vsync") == 0)
 			{
-				m_shell->setSwapInterval(atoi(val));
+				if (!strcasecmp(val, "on"))
+				{
+					m_shell->setVsyncMode(VsyncMode::On);
+				}
+				else if (!strcasecmp(val, "off"))
+				{
+					m_shell->setVsyncMode(VsyncMode::Off);
+				}
+				else if (!strcasecmp(val, "relaxed"))
+				{
+					m_shell->setVsyncMode(VsyncMode::Relaxed);
+				}
+				else if (!strcasecmp(val, "mailbox"))
+				{
+					m_shell->setVsyncMode(VsyncMode::Mailbox);
+				}
+				else if (!strcasecmp(val, "half"))
+				{
+					m_shell->setVsyncMode(VsyncMode::Half);
+				}
+				else
+				{
+					char* converted;
+					int value = strtol(val, &converted, 0);
+					if (!*converted)
+					{
+						switch (value)
+						{
+						case 0: m_shell->setVsyncMode(VsyncMode::Off); break;
+						case 1: m_shell->setVsyncMode(VsyncMode::On); break;
+						case 2: m_shell->setVsyncMode(VsyncMode::Half); break;
+						case -1: m_shell->setVsyncMode(VsyncMode::Relaxed); break;
+						case -2: m_shell->setVsyncMode(VsyncMode::Mailbox); break;
+						default: break;
+						}
+					}
+				}
 			}
 			else if (strcasecmp(arg, "-colorbpp") == 0 || strcasecmp(arg, "-colourbpp") == 0
 			         || strcasecmp(arg, "-cbpp") == 0)
@@ -175,6 +211,11 @@ void StateMachine::applyCommandLine()
 			{
 				m_shell->setDesiredConfig(atoi(val));
 			}
+			/*	else if(strcasecmp(arg, "-display") == 0)
+			{
+			// TODO:
+			m_shell->PVRShellset(PVRShell::prefNativeDisplay, atoi(val));
+			}*/
 			else if (strcasecmp(arg, "-forceframetime") == 0 || strcasecmp(arg, "-fft") == 0)
 			{
 				m_shell->setForceFrameTime(true);
@@ -250,12 +291,16 @@ Result::Enum StateMachine::executeOnce()
 	// Handle our state
 	switch (m_currentState)
 	{
-	case StateNotInitialised:
-		return Result::NotInitialised;
+	case StateNotInitialized:
+		return Result::NotInitialized;
 	case StateInitApplication:
 		m_shell = newDemo();
 		m_shellData.platformContext = pvr::createNativePlatformContext(*m_shell);
-		result = m_shell->init(&m_shellData);
+		result = Result::UnableToOpen;
+		if (m_shellData.platformContext.get())
+		{
+			result = m_shell->init(&m_shellData);
+		}
 
 		if (result == Result::Success)
 		{
@@ -279,7 +324,7 @@ Result::Enum StateMachine::executeOnce()
 		{
 			m_shell.reset();
 
-			m_currentState = StatePreExit; // If we have reached this point, then m_shell has already been initialised.
+			m_currentState = StatePreExit; // If we have reached this point, then m_shell has already been initialized.
 			string error = string("State Machine initialisation failed with error '") + Log.getResultCodeString(result) + string("'\n");
 			Log(Log.Error, error.c_str());
 		}
@@ -287,8 +332,8 @@ Result::Enum StateMachine::executeOnce()
 	case StateInitWindow:
 	{
 		applyCommandLine();
-		// Initialise our window. On some platforms this will be a dummy function
-		result = ShellOS::initialiseWindow(m_shellData.attributes);
+		// Initialize our window. On some platforms this will be a dummy function
+		result = ShellOS::initializeWindow(m_shellData.attributes);
 		if (result == Result::Success) {	m_currentState = StateInitAPI;}
 		else {	m_currentState = StateQuitApplication;	}
 	}
@@ -297,7 +342,7 @@ Result::Enum StateMachine::executeOnce()
 		if (!m_shellData.platformContext.get())
 		{
 			m_currentState = StateReleaseWindow;
-			return Result::NotInitialised;
+			return Result::NotInitialized;
 		}
 		else
 		{
@@ -359,7 +404,7 @@ Result::Enum StateMachine::executeOnce()
 		if (result == Result::Success)
 		{
 			// Swap buffers
-			result = m_shellData.presentBackBuffer ? m_shellData.platformContext->presentBackbuffer() : Result::Success;
+			result = (m_shellData.presentBackBuffer && m_shellData.platformContext->presentBackbuffer()) ? Result::Success : Result::UnknownError;
 
 			if (result != Result::Success)
 			{
@@ -442,13 +487,17 @@ Result::Enum StateMachine::executeOnce()
 		if (m_shellData.graphicsContextStore.isValid())
 		{
 			m_shellData.graphicsContextStore->release();
-			m_shellData.graphicsContextStore.release();
+			m_shellData.graphicsContextStore.reset();
 		}
-		m_shellData.graphicsContext.release();
+		m_shellData.graphicsContext.reset();
 		m_currentState = StateReleaseWindow;
 		break;
 	case StateReleaseWindow:
 		Log(Log.Debug, "ReleaseWindow");
+		if (m_shellData.platformContext.get())
+		{
+			m_shellData.platformContext->release();
+		}
 		ShellOS::releaseWindow();
 
 		if (!m_shellData.weAreDone && m_shellData.forceReleaseInitCycle)
@@ -460,7 +509,6 @@ Result::Enum StateMachine::executeOnce()
 		{
 			m_currentState = StateQuitApplication;
 		}
-		m_shellData.platformContext->release();
 		break;
 	case StateQuitApplication:
 		Log(Log.Debug, "QuitApplication");

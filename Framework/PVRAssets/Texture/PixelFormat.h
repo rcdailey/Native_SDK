@@ -31,7 +31,7 @@ public:
 	/*!***********************************************************************
 	\param[in]	Type Pixel format type
 	\return		Return a new PixelFormat
-	\brief	Initialises a new pixel type from a 64 bit integer value.
+	\brief	Initializes a new pixel type from a 64 bit integer value.
 	*************************************************************************/
 	PixelFormat(uint64 Type): m_format(Type) { }
 
@@ -71,7 +71,7 @@ public:
 	*************************************************************************************************************/
 	uint8 getChannelBits(uint8 channel)
 	{
-		if (channel > 4) { return 0; }
+		if (channel >= 4) { return 0; }
 		return m_format.m_pixelTypeChar[channel + 4];
 	}
 
@@ -82,10 +82,30 @@ public:
 	uint8 getNumberOfChannels()
 	{
 		return
-		    m_format.m_pixelTypeChar[7] ? 4 :
-		    m_format.m_pixelTypeChar[6] ? 3 :
-		    m_format.m_pixelTypeChar[5] ? 2 :
-		    m_format.m_pixelTypeChar[4] ? 1 : 0;
+		  m_format.m_pixelTypeChar[7] ? 4 :
+		  m_format.m_pixelTypeChar[6] ? 3 :
+		  m_format.m_pixelTypeChar[5] ? 2 :
+		  m_format.m_pixelTypeChar[4] ? 1 : 0;
+	}
+
+	/*!***********************************************************************************************************
+	\brief Returns true if the format is a "normal" compressed format, i.e. the format is not regular (channel type/
+	bitrate combination), but excludes some special packed formats that are not compressed, such as shared exponent
+	formats.
+	*************************************************************************************************************/
+	uint8 isCompressedFormat()
+	{
+		return (m_format.Part.High == 0) && (m_format.Part.Low != CompressedPixelFormat::SharedExponentR9G9B9E5);
+	}
+
+	/*!***********************************************************************************************************
+	\brief Returns if the format is some kind of directly supported format that is not regular (i.e. channel type/
+	channel bitrate combination). I.e. returns true if the format is any of the formats described in the supported
+	"compressed" formats enumeration.
+	*************************************************************************************************************/
+	uint8 isIrregularFormat()
+	{
+		return m_format.Part.High == 0;
 	}
 
 	/*!*******************************************************************************************************************************
@@ -122,7 +142,7 @@ public:
 	}
 
 	/*!*******************************************************************************************************************************
-	\brief	operator==, validate if a give pixel format is same as this.
+	\brief	operator==, validate if a given pixel format is same as this.
 	\return	Return true if the given pixel format is same
 	\param	rhs pixel format to compare
 	**********************************************************************************************************************************/
@@ -139,20 +159,6 @@ private:
 
 	union PixelFormatImpl
 	{
-		//Channel Names
-		enum ChannelName
-		{
-			ChannelNameNoChannel,
-			ChannelNameRed,
-			ChannelNameGreen,
-			ChannelNameBlue,
-			ChannelNameAlpha,
-			ChannelNameLuminance,
-			ChannelNameIntensity,
-			ChannelNameUnspecified,
-			ChannelNameNumChannels
-		};
-
 		/*!***********************************************************************
 			\return		A new PixelFormat
 			\description	Creates an empty pixeltype.
@@ -162,7 +168,7 @@ private:
 		/*!***********************************************************************
 			\param[in]			Type
 			\return		A new PixelFormat
-			\description	Initialises a new pixel type from a 64 bit integer value.
+			\description	Initializes a new pixel type from a 64 bit integer value.
 			*************************************************************************/
 		PixelFormatImpl(uint64 Type) : m_pixelTypeID(Type) { }
 
@@ -225,3 +231,4 @@ public:
 	static const PixelFormat Unknown;//!< Unknown
 };
 }
+

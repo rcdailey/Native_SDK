@@ -13,7 +13,7 @@ application window.
 #include "PVRPlatformGlue/PlatformContext.h"
 #include "PVRCore/StringFunctions.h"
 
-bool isOpenGLES31NotSupported_Workaround();
+bool isOpenGLES31NotSupported_Workaround = false;
 
 #ifndef EGL_CONTEXT_LOST_IMG
 /*! Extended error code EGL_CONTEXT_LOST_IMG generated when power management event has occurred. */
@@ -87,12 +87,16 @@ void logEGLConfiguration(const DisplayAttributes& attributes)
 	Log(Log.Debug, "\tFullScreen: %s", (attributes.fullscreen ? "true" : "false"));
 }
 
+glm::uint32 PlatformContext::getSwapChainLength() const { return 1; }
+
+
 void PlatformContext::release()
 {
-	if (m_initialised)
+	if (m_initialized)
 	{
 		// Check the current context/surface/display. If they are equal to the handles in this class, remove them from the current context
 		if (m_platformContextHandles->display == egl::GetCurrentDisplay() &&
+		    m_platformContextHandles->display != EGL_NO_DISPLAY &&
 		    m_platformContextHandles->drawSurface == egl::GetCurrentSurface(EGL_DRAW) &&
 		    m_platformContextHandles->readSurface == egl::GetCurrentSurface(EGL_READ) &&
 		    m_platformContextHandles->context == egl::GetCurrentContext())
@@ -121,13 +125,12 @@ void PlatformContext::release()
 			egl::Terminate(m_platformContextHandles->display);
 		}
 
-		m_initialised = false;
+		m_initialized = false;
 	}
 	m_ContextImplementationID = size_t(-1);
 	m_maxApiVersion = Api::Unspecified;
-	m_preInitialised = false;
+	m_preInitialized = false;
 }
-
 
 static inline EGLContext getContextForConfig(EGLDisplay display, EGLConfig config, Api::Enum graphicsapi)
 {
@@ -155,7 +158,7 @@ static inline EGLContext getContextForConfig(EGLDisplay display, EGLConfig confi
 	default:
 		return EGL_NO_CONTEXT;
 	}
-	PVR_ASSERT(requestedMajorVersion && (requestedMinorVersion >= 0) && "Unsupported major-minor version");
+	assertion(requestedMajorVersion && (requestedMinorVersion >= 0), "Unsupported major-minor version");
 
 #ifdef DEBUG
 	int debug_flag = 0;
@@ -199,7 +202,7 @@ static inline EGLContext getContextForConfig(EGLDisplay display, EGLConfig confi
 	if (ctx == EGL_NO_CONTEXT)
 	{
 #ifdef DEBUG
-		//RETRY!!! Do we support debug bit?
+		//RETRY! Do we support debug bit?
 		egl::GetError(); //clear error
 		contextAttributes[debug_flag] = EGL_NONE;
 		ctx = egl::CreateContext(display, config, NULL, contextAttributes);
@@ -207,7 +210,6 @@ static inline EGLContext getContextForConfig(EGLDisplay display, EGLConfig confi
 	}
 	return ctx;
 }
-
 
 static inline Result::Enum isGlesVersionSupported(EGLDisplay display, Api::Enum graphicsapi, bool& isSupported)
 {
@@ -268,19 +270,19 @@ static inline Result::Enum isGlesVersionSupported(EGLDisplay display, Api::Enum 
 			return Result::UnknownError;
 		}
 
-		for (size_t i = 0; i != configs.size(); ++i)
+		for (size_t ii = 0; ii != configs.size(); ++ii)
 		{
 
-			Log(Log.Verbose, "Trying to create context for config #%d...", i);
+			Log(Log.Verbose, "Trying to create context for config #%d...", ii);
 			EGLContext ctx;
-			if ((ctx = getContextForConfig(display, configs[i], graphicsapi)) != EGL_NO_CONTEXT)
+			if ((ctx = getContextForConfig(display, configs[ii], graphicsapi)) != EGL_NO_CONTEXT)
 			{
 				Log(Log.Verbose, "SUCCESS creating context! Reporting success.");
 				isSupported = true;
 				egl::DestroyContext(display, ctx);
 				return Result::Success;
 			}
-			Log(Log.Verbose, "Failed to create context for config #%d.", i);
+			Log(Log.Verbose, "Failed to create context for config #%d.", ii);
 		}
 
 		// Choose a config based on user supplied attributes
@@ -289,7 +291,7 @@ static inline Result::Enum isGlesVersionSupported(EGLDisplay display, Api::Enum 
 
 }
 
-static inline Result::Enum initialiseContext(const bool wantWindow, DisplayAttributes& attributes, const NativePlatformHandles& handles, EGLConfig& config, Api::Enum graphicsapi)
+static inline Result::Enum initializeContext(const bool wantWindow, DisplayAttributes& attributes, const NativePlatformHandles& handles, EGLConfig& config, Api::Enum graphicsapi)
 {
 	// Choose a config based on user supplied attributes
 	std::vector<EGLConfig> configs;
@@ -392,7 +394,7 @@ static inline Result::Enum initialiseContext(const bool wantWindow, DisplayAttri
 		if (egl::ChooseConfig(handles->display, configAttributes, configs.data(), configsSize, &numConfigs) != EGL_TRUE
 		    || numConfigs != configsSize)
 		{
-			Log("EGL context creation: initialiseContext Error choosing egl config. %x",
+			Log("EGL context creation: initializeContext Error choosing egl config. %x",
 			    egl::GetError());
 			return Result::UnsupportedRequest;
 		}
@@ -447,7 +449,7 @@ static inline Result::Enum initialiseContext(const bool wantWindow, DisplayAttri
 		default:
 			break;
 		}
-		PVR_ASSERT(requestedMajorVersion && (requestedMinorVersion >= 0) && "Unsupported major-minor version");
+		assertion(requestedMajorVersion && (requestedMinorVersion >= 0), "Unsupported major-minor version");
 		Log(Log.Information, "EGL context creation: Trying to get OpenGL ES version : %d.%d", requestedMajorVersion, requestedMinorVersion);
 
 
@@ -562,7 +564,8 @@ static inline Result::Enum initialiseContext(const bool wantWindow, DisplayAttri
 
 }
 
-static inline Result::Enum preInitialise(OSManager& mgr, NativePlatformHandles& handles)
+
+static inline Result::Enum preInitialize(OSManager& mgr, NativePlatformHandles& handles)
 {
 	if (!handles.get())
 	{
@@ -583,7 +586,7 @@ static inline Result::Enum preInitialise(OSManager& mgr, NativePlatformHandles& 
 		return Result::UnknownError;
 	}
 
-	// Initialise the display
+	// Initialize the display
 	if (egl::Initialize(handles->display, NULL, NULL) != EGL_TRUE)
 	{
 		return Result::UnknownError;
@@ -604,20 +607,20 @@ static inline Result::Enum preInitialise(OSManager& mgr, NativePlatformHandles& 
 /*This function assumes that the osManager's getDisplay() and getWindow() types are one and the same with NativePlatformHandles::NativeDisplay and NativePlatformHandles::NativeWindow.*/
 Result::Enum PlatformContext::init()
 {
-	if (m_initialised)
+	if (m_initialized)
 	{
-		return Result::AlreadyInitialised;
+		return Result::AlreadyInitialized;
 	}
 
 	Result::Enum result;
-	if (!m_preInitialised)
+	if (!m_preInitialized)
 	{
-		result = preInitialise(m_OSManager, m_platformContextHandles);
+		result = preInitialize(m_OSManager, m_platformContextHandles);
 		if (result != Result::Success)
 		{
 			return result;
 		}
-		m_preInitialised = true;
+		m_preInitialized = true;
 		populateMaxApiVersion();
 	}
 
@@ -625,35 +628,35 @@ Result::Enum PlatformContext::init()
 	{
 		if (m_OSManager.getMinApiTypeRequired() == Api::Unspecified)
 		{
-			Api::Enum version = getMaxApiVersion();
-			m_OSManager.setApiTypeRequired(version);
-			Log(Log.Information, "Unspecified target API -- Setting to max API level : %s", Api::getApiName(version));
+			apiType = getMaxApiVersion();
+			m_OSManager.setApiTypeRequired(apiType);
+			Log(Log.Information, "Unspecified target API -- Setting to max API level : %s", Api::getApiName(apiType));
 		}
 		else
 		{
-			Api::Enum version = std::max(m_OSManager.getMinApiTypeRequired(), getMaxApiVersion());
+			apiType = std::max(m_OSManager.getMinApiTypeRequired(), getMaxApiVersion());
 			Log(Log.Information, "Requested minimum API level : %s. Will actually create %s since it is supported.",
 			    Api::getApiName(m_OSManager.getMinApiTypeRequired()), Api::getApiName(getMaxApiVersion()));
-			m_OSManager.setApiTypeRequired(version);
+			m_OSManager.setApiTypeRequired(apiType);
 		}
 	}
 	else
 	{
-		Log(Log.Information, "Forcing specific API level: %s", Api::getApiName(m_OSManager.getApiTypeRequired()));
+		Log(Log.Information, "Forcing specific API level: %s", Api::getApiName(apiType = m_OSManager.getApiTypeRequired()));
 	}
 
-	if (m_OSManager.getApiTypeRequired() > getMaxApiVersion())
+	if (apiType > getMaxApiVersion())
 	{
-			Log(Log.Error, "================================================================================\n"
-				"API level requested [%s] was not supported. Max supported API level on this device is [%s]\n"
-				"**** APPLICATION WILL EXIT ****\n"
-				"================================================================================",
-				Api::getApiName(m_OSManager.getApiTypeRequired()), Api::getApiName(getMaxApiVersion()));
+		Log(Log.Error, "================================================================================\n"
+		    "API level requested [%s] was not supported. Max supported API level on this device is [%s]\n"
+		    "**** APPLICATION WILL EXIT ****\n"
+		    "================================================================================",
+		    Api::getApiName(apiType), Api::getApiName(getMaxApiVersion()));
 		return Result::UnsupportedRequest;
 	}
 
 	EGLConfig config;
-	result = initialiseContext(true, m_OSManager.getDisplayAttributes(), m_platformContextHandles, config, m_OSManager.getApiTypeRequired());
+	result = initializeContext(true, m_OSManager.getDisplayAttributes(), m_platformContextHandles, config, apiType);
 
 	if (result != Result::Success)
 	{
@@ -694,22 +697,29 @@ Result::Enum PlatformContext::init()
 	egl::QuerySurface(m_platformContextHandles->display, m_platformContextHandles->drawSurface, EGL_HEIGHT,
 	                  (EGLint*)&m_OSManager.getDisplayAttributes().height);
 
-	m_swapInterval = m_OSManager.getDisplayAttributes().swapInterval;
-	m_initialised = true;
+	m_swapInterval = 1;
+	switch (m_OSManager.getDisplayAttributes().vsyncMode)
+	{
+	case VsyncMode::Half: m_swapInterval = 2; break;
+	case VsyncMode::Mailbox: case VsyncMode::Off: m_swapInterval = 0; break;
+	case VsyncMode::Relaxed: m_swapInterval = -1; break;
+	default: break;
+	}
+	m_initialized = true;
 	return Result::Success;
 }
 
 Api::Enum PlatformContext::getMaxApiVersion()
 {
 
-	if (!m_preInitialised)
+	if (!m_preInitialized)
 	{
-		if (preInitialise(m_OSManager, m_platformContextHandles) != Result::Success)
+		if (preInitialize(m_OSManager, m_platformContextHandles) != Result::Success)
 		{
 			Log(Log.Critical, "Could not query max API version. Error while initialising OpenGL ES");
 			return Api::Unspecified;
 		}
-		m_preInitialised = true;
+		m_preInitialized = true;
 		populateMaxApiVersion();
 	}
 
@@ -727,13 +737,13 @@ void PlatformContext::populateMaxApiVersion()
 		const char* esversion = (graphicsapi == Api::OpenGLES31 ? "3.1" : graphicsapi == Api::OpenGLES3 ? "3.0" : graphicsapi == Api::OpenGLES2 ?
 		                         "2.0" : "UNKNOWN_VERSION");
 		result = isGlesVersionSupported(m_platformContextHandles->display, graphicsapi, supported);
-		
+
 		if (result == Result::Success)
 		{
 			if (supported && graphicsapi == Api::OpenGLES31)
 			{
 				///////////////////////////  WORKAROUND FOR SOME DEBUG DRIVERS ///////////////////////////
-				if (isOpenGLES31NotSupported_Workaround())
+				if (isOpenGLES31NotSupported_Workaround)
 				{
 					supported = false;
 					Log(Log.Debug, "Activating workaround - OpenGL ES 3.1 support was reported, but is not present.");
@@ -765,22 +775,22 @@ void PlatformContext::populateMaxApiVersion()
 bool PlatformContext::isApiSupported(Api::Enum apiLevel)
 {
 
-	if (!m_preInitialised)
+	if (!m_preInitialized)
 	{
-		if (preInitialise(m_OSManager, m_platformContextHandles) != Result::Success)
+		if (preInitialize(m_OSManager, m_platformContextHandles) != Result::Success)
 		{
 			return false;
 		}
-		m_preInitialised = true;
+		m_preInitialized = true;
 		populateMaxApiVersion();
 	}
 	return apiLevel >= m_maxApiVersion;
 }
 
-Result::Enum PlatformContext::makeCurrent()
+bool PlatformContext::makeCurrent()
 {
-	Result::Enum result = (egl::MakeCurrent(m_platformContextHandles->display, m_platformContextHandles->drawSurface,
-	                                        m_platformContextHandles->drawSurface, m_platformContextHandles->context) == EGL_TRUE ? Result::Success : Result::UnknownError);
+	bool result = (egl::MakeCurrent(m_platformContextHandles->display, m_platformContextHandles->drawSurface,
+	                                m_platformContextHandles->drawSurface, m_platformContextHandles->context) == EGL_TRUE);
 #if !defined(__ANDROID__)&&!defined(TARGET_OS_IPHONE)
 	if (m_swapInterval != -2)
 	{
@@ -792,10 +802,9 @@ Result::Enum PlatformContext::makeCurrent()
 	return result;
 }
 
-Result::Enum PlatformContext::presentBackbuffer()
+bool PlatformContext::presentBackbuffer()
 {
-	bool result = (egl::SwapBuffers(m_platformContextHandles->display, m_platformContextHandles->drawSurface) == EGL_TRUE);
-	return result ? Result::Success : Result::UnknownError;
+	return (egl::SwapBuffers(m_platformContextHandles->display, m_platformContextHandles->drawSurface) == EGL_TRUE);
 }
 
 string PlatformContext::getInfo()
@@ -933,7 +942,7 @@ namespace pvr {
 //Creates an instance of a graphics context
 std::auto_ptr<IPlatformContext> createNativePlatformContext(OSManager& mgr)
 {
-	egl::initEgl();
+	if (!egl::initEgl()) { return std::auto_ptr<IPlatformContext>(); }
 	eglext::initEglExt();
 	return std::auto_ptr<IPlatformContext>(new system::PlatformContext(mgr));
 }

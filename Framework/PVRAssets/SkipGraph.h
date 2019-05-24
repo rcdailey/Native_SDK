@@ -51,7 +51,7 @@ public:
 	*****************************************************************************/
 	SkipGraphNode& getDependency(uint32 id) const
 	{
-		PVR_ASSERT(id >= 0 && id < (uint32)m_apDependencies.size());
+		assertion(id < (uint32)m_apDependencies.size(), "SkipGraph::getDependency id out of range");
 		return *m_apDependencies[id];
 	}
 
@@ -188,7 +188,6 @@ public:
 	bool addNode(const T& data)
 	{
 		size_t hashed = hash<string>()(data->toString());
-		ptrdiff_t iArrayElement(-1);
 
 		//	First, search the hash table to see
 		//	if the node already exists.
@@ -198,7 +197,7 @@ public:
 			//	The node wasn't found, so a new node needs to be
 			//	created.
 			m_aHashTable.push_back(HashElement(hashed, data));
-			iArrayElement = m_aHashTable.size() - 1;
+			ptrdiff_t iArrayElement = m_aHashTable.size() - 1;
 
 			//	Now point to the new instance.
 			skipGraphNode = &m_aHashTable[iArrayElement].getNode();
@@ -247,7 +246,7 @@ public:
 	void RetreiveSortedDependencyList(std::vector<T>& aOutputArray,
 	                                  const uint32 nodeID)
 	{
-		PVR_ASSERT(nodeID >= 0 && nodeID < (uint32)m_aHashTable.size());
+		assertion(nodeID < (uint32)m_aHashTable.size(), "SkipGraph::RetreiveSortedDependencyList nodeId out of range");
 		recursiveSortedListAdd(aOutputArray, m_aHashTable[nodeID].getNode());
 	}
 
@@ -293,7 +292,7 @@ private:
 	*****************************************************************************/
 	T* getNodeData(uint32 nodeID)
 	{
-		PVR_ASSERT(nodeID >= 0 && nodeID < (uint32)m_aHashTable.size());
+		assertion(nodeID < (uint32)m_aHashTable.size(), "SkipGraph::getNodeData nodeId out of range");
 		return &m_aHashTable[nodeID].getNode().getData();
 	}
 
@@ -309,7 +308,7 @@ private:
 		int i(0);
 		int i32HashTableSize((int32)m_aHashTable.size());
 
-		//	A NULL hash means the node has not initialised
+		//	A NULL hash means the node has not initialized
 		//	correctly.
 		if (hash == 0) { return NULL; }
 
